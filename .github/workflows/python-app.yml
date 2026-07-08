@@ -6,21 +6,46 @@ on:
       - main
 
 jobs:
-  build:
+  deploy:
+
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
 
-      - name: Execute Deployment Script
+
+      - name: Run Python Test
         run: |
-          python deploy.py
+          python app.py
+
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/keypair.pem
+          chmod 600 ~/.ssh/keypair.pem
+
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+          -i ~/.ssh/keypair.pem \
+          ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} \
+          "
+          cd /home/ec2-user/project &&
+          git pull &&
+          python3 app.py
+          "
